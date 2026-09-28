@@ -1,5 +1,7 @@
+version: 2026.232.0520
 ollama-cuda:
     candy:
+        version: 2026.229.1218
         description: |
             NVIDIA CUDA inference backend for the ollama LLM server
             Adds the CUDA ggml backend so a composing GPU box runs inference on an
