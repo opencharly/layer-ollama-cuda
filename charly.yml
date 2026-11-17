@@ -35,3 +35,34 @@ ollama-cuda:
               id: ollama-cuda-backend-present
               exit_status: 0
               command: ls /usr/lib/ollama/*/libggml-cuda.so
+            # Backend PRESENT is not backend USED, and the difference is invisible from outside: a
+            # container whose driver user-space shadows the injected one keeps answering every API
+            # call while ggml offloads nothing. Measured on a CachyOS pod built from the v0.40.16
+            # pins -- "ggml_cuda_init: found 1 CUDA devices", then "offloaded 0/29 layers to GPU",
+            # and `ollama ps` showing a 989 MiB model resident with 36 MiB of VRAM -- with this
+            # candy's only check (above) green. opencharly/layer-ollama-cuda#8.
+            #
+            # This is the assertion that FAILS on that shape: it compares the driver version the
+            # container RESOLVED against the running kernel module's, which is the pair that a baked
+            # library breaks (opencharly/layer-cuda#21).
+            - check: the container resolved the injected host driver, and its version equals the running kernel module's
+              id: ollama-cuda-driver-matches-module
+              exit_status: 0
+              command: |
+                set -eu
+                lib=/usr/lib/libnvidia-ml.so.1
+                if [ ! -e "$lib" ]; then
+                  echo "no $lib — nothing was injected into this container"
+                  exit 1
+                fi
+                uv=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d ' ')
+                km=$(grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' /proc/driver/nvidia/version 2>/dev/null | head -1 || true)
+                echo "userspace=$uv kernel-module=$km lib=$(readlink -f "$lib")"
+                if [ -z "$uv" ]; then
+                  echo "nvidia-smi reported no driver version"
+                  exit 1
+                fi
+                if [ "$uv" != "$km" ]; then
+                  echo "DRIVER/LIBRARY MISMATCH — an image library shadows the injected host driver"
+                  exit 1
+                fi
