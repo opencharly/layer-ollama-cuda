@@ -44,8 +44,8 @@ my-ollama-gpu:
   candy:
     base: cachyos
     candy:
-      - '@github.com/opencharly/pod-ollama:v2026.243.0411'
-      - '@github.com/opencharly/layer-ollama-cuda:v2026.243.1754'
+      - '@github.com/opencharly/pod-ollama:v2026.327.1941'
+      - '@github.com/opencharly/layer-ollama-cuda:v2026.320.1042'
 ```
 
 ## Layout
