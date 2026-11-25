@@ -16,18 +16,25 @@ ollama-cuda:
 
             Two install paths, one assertion. On Arch (CachyOS included) the split
             `ollama-cuda` package supplies the backend — it depends on the `ollama`
-            package, so the two compose rather than conflict. On a distro that has no
+            package and on `opencl-nvidia`, the DRIVER package: installing it plainly bakes
+            the driver user-space AND collides with the ICD file the CDI contract writes
+            (`/etc/OpenCL/vendors/nvidia.icd`). It is installed below with that dependency
+            treated as satisfied, because the pod receives the driver from the host through
+            CDI. On a distro that has no
             ollama package the base candy installs the upstream tarball, which already
             bundles the CUDA backend, so this candy adds no package there and simply
             asserts the backend really is present. Either way the check below fails
             when the CUDA backend is missing, which is the property worth having.
         require:
             - '@github.com/opencharly/pod-ollama:v2026.328.0727'
-        distro:
-            arch:
-                package:
-                    - ollama-cuda
         plan:
+            - run: install the ollama CUDA backend driver-free — opencl-nvidia is satisfied at runtime by the CDI-injected driver
+              run_as: root
+              command: |
+                if [ ! -f /etc/arch-release ]; then
+                  exit 0
+                fi
+                pacman -Syu --noconfirm --needed --assume-installed opencl-nvidia ollama-cuda
             # Version-agnostic on purpose: the runner directory carries the CUDA major
             # in its name (cuda_v13 today), so a fixed path would rot on the next CUDA
             # bump while the glob keeps asserting the same property.
